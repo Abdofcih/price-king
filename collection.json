@@ -1,0 +1,211 @@
+
+{
+  "info": {
+    "name": "Price Alerts API (NestJS + PostgreSQL)",
+    "_postman_id": "c2d2c6a0-9f32-4b8a-9800-aaaa0000abcd",
+    "description": "Auth (email verification), Products snapshot/history (public), Alerts (requires verified email).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "email", "value": "user@example.com" },
+    { "key": "password", "value": "ChangeMe123!" },
+    { "key": "token", "value": "" },
+    { "key": "verifyToken", "value": "" },
+    { "key": "amazonProductUrl", "value": "https://www.amazon.sa/dp/B0DGK2GQY9" },
+    { "key": "lang", "value": "en" },
+    { "key": "productId", "value": "" },
+    { "key": "alertId", "value": "" },
+    { "key": "targetPrice", "value": "3000" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201/200', () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "pm.test('payload ok', () => { const j = pm.response.json(); pm.expect(j).to.have.property('email'); });",
+                  "pm.info && pm.info('Check your email inbox for the verification link.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('has token', () => pm.expect(j).to.have.property('access_token'));",
+                  "pm.collectionVariables.set('token', j.access_token);",
+                  "console.log('JWT saved to {{token}}');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Email (paste token from email)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-email?token={{verifyToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-email"],
+              "query": [{ "key": "token", "value": "{{verifyToken}}" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.expect(pm.response.code).to.be.oneOf([200,204]));",
+                  "pm.test('verified', () => { try { const j = pm.response.json(); pm.expect(j).to.have.property('ok', true);} catch(e) { /* 204 */ } });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "description": "Open the verify link from your email. If you prefer via Postman, paste the token here."
+        }
+      ]
+    },
+    {
+      "name": "Products (Public)",
+      "item": [
+        {
+          "name": "Create Snapshot (scrape + save + history)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/products/snapshot?lang={{lang}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "snapshot"],
+              "query": [{ "key": "lang", "value": "{{lang}}" }]
+            },
+            "body": { "mode": "raw", "raw": "{\n  \"url\": \"{{amazonProductUrl}}\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201/200', () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "const j = pm.response.json();",
+                  "pm.test('has product and history', () => { pm.expect(j).to.have.property('product'); pm.expect(j).to.have.property('history'); });",
+                  "pm.collectionVariables.set('productId', j.product.id);",
+                  "console.log('productId=', j.product.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Product (public view)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/products/{{productId}}", "host": ["{{baseUrl}}"], "path": ["products", "{{productId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('shape ok', () => { pm.expect(j).to.have.property('product'); pm.expect(j).to.have.property('history'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Alerts (Requires JWT + Verified Email)",
+      "item": [
+        {
+          "name": "List Alerts",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/alerts", "host": ["{{baseUrl}}"], "path": ["alerts"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"], "type": "text/javascript" }
+            }
+          ]
+        },
+        {
+          "name": "Create Alert",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/alerts", "host": ["{{baseUrl}}"], "path": ["alerts"] },
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"targetPrice\": {{targetPrice}}\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201/200', () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "const j = pm.response.json();",
+                  "pm.test('has id', () => pm.expect(j).to.have.property('id'));",
+                  "pm.collectionVariables.set('alertId', j.id);",
+                  "console.log('alertId=', j.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Alert",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/alerts/{{alertId}}", "host": ["{{baseUrl}}"], "path": ["alerts", "{{alertId}}"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["pm.test('status 200', () => pm.response.to.have.status(200));"], "type": "text/javascript" }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
