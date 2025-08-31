@@ -5,12 +5,12 @@ import { AlertsController } from './alerts.controller';
 import { Alert } from './entities/alert.entity';
 import { Product } from '../products/entities/product.entity';
 import { PriceHistory } from '../products/entities/price-history.entity';
-import { ScraperModule } from '../scrapers/scraper.module';
 import { EmailModule } from '../email/email.module';
 import { AlertsProcessor } from './alerts.processor';
+import { ScraperClientModule } from 'src/scraper-client/scraper-client.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Alert, Product, PriceHistory]), ScraperModule, EmailModule],
+  imports: [TypeOrmModule.forFeature([Alert, Product, PriceHistory]), ScraperClientModule, EmailModule],
   providers: [AlertsService, AlertsProcessor],
   controllers: [AlertsController],
 })

@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './products/products.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { EmailModule } from './email/email.module';
+import { ScraperClientModule } from './scraper-client/scraper-client.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { EmailModule } from './email/email.module';
     AuthModule,
     ProductsModule,
     AlertsModule,
+    ScraperClientModule,
   ],
 })
 export class AppModule {}

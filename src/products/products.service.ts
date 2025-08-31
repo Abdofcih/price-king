@@ -3,12 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { PriceHistory } from './entities/price-history.entity';
-import { ScraperService } from '../scrapers/scraper.service';
+ import { ScraperClientService } from '../scraper-client/scraper-client.service';
+
 
 @Injectable()
 export class ProductsService {
   constructor(
-    private scraper: ScraperService,
+    private scraperClient: ScraperClientService,
     @InjectRepository(Product) private products: Repository<Product>,
     @InjectRepository(PriceHistory) private histories: Repository<PriceHistory>,
   ) {}
@@ -22,7 +23,7 @@ export class ProductsService {
   }
 
   async snapshot(url: string, lang: 'en'|'ar' = 'en') {
-    const snap = await this.scraper.product(url, lang);
+   const snap = await this.scraperClient.fetchProduct(url, lang);
 
     const urlCanonical = this.canonical(snap.urlAtStore);
     let product = await this.products.findOne({ where: { urlCanonical } });

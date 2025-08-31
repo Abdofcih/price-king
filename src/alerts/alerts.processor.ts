@@ -3,7 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Alert } from './entities/alert.entity';
-import { ScraperService } from '../scrapers/scraper.service';
+import { ScraperClientService } from '../scraper-client/scraper-client.service';
 import { EmailService } from '../email/email.service';
 import { PriceHistory } from '../products/entities/price-history.entity';
 import { Product } from '../products/entities/product.entity';
@@ -16,17 +16,18 @@ export class AlertsProcessor {
     @InjectRepository(Alert) private alerts: Repository<Alert>,
     @InjectRepository(Product) private products: Repository<Product>,
     @InjectRepository(PriceHistory) private histories: Repository<PriceHistory>,
-    private scraper: ScraperService,
+       private scraperClient: ScraperClientService,
     private email: EmailService,
   ) {}
 
-  @Cron(CronExpression.EVERY_15_MINUTES)
+  @Cron(CronExpression.EVERY_HOUR)
   async checkAlerts() {
     const active = await this.alerts.find({ where: { active: true }, relations: ['user', 'product'] });
     for (const alert of active) {
       try {
         const lang = (alert.product.lang as 'en'|'ar') || 'en';
-        const snap = await this.scraper.product(alert.product.urlCanonical, lang);
+        const snap = await this.scraperClient.fetchProduct(alert.product.urlCanonical, lang);
+
 
         // Save history + update product
         await this.histories.save(this.histories.create({

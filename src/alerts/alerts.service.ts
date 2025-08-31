@@ -5,11 +5,13 @@ import { Alert } from './entities/alert.entity';
 import { Product } from '../products/entities/product.entity';
 import { User } from '../auth/entities/user.entity';
 
+
 @Injectable()
 export class AlertsService {
   constructor(
     @InjectRepository(Alert) private alerts: Repository<Alert>,
     @InjectRepository(Product) private products: Repository<Product>,
+
   ) {}
 
   async create(user: User, productId: string, targetPrice: number) {
